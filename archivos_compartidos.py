@@ -263,20 +263,45 @@ def actualizar_estado():
 
 
 def buscar_automatico():
+    if IP_OTRA_PC:
+        mostrar_mensaje(f"Ya conectado a {IP_OTRA_PC}")
+        return
     lbl_buscar.config(text="Buscando...")
     btn_buscar.config(state=tk.DISABLED)
 
     def _buscar():
-        encontradas = buscar_pc(timeout=3)
+        encontradas = buscar_pc(timeout=4)
         if encontradas:
             ventana.after(0, lambda: aplicar_ip(encontradas[0]))
             ventana.after(0, lambda: mostrar_mensaje(f"PC encontrada: {encontradas[0]}"))
-            ventana.after(0, lambda: lbl_buscar.config(text="Buscar PC"))
+            ventana.after(0, lambda: lbl_buscar.config(text=""))
         else:
             ventana.after(0, lambda: lbl_buscar.config(text="No se encontro PC (reintenta)"))
         ventana.after(0, lambda: btn_buscar.config(state=tk.NORMAL))
 
     threading.Thread(target=_buscar, daemon=True).start()
+
+
+def autodescubrir_continuo():
+    if IP_OTRA_PC:
+        return
+
+    def _loop():
+        while not IP_OTRA_PC:
+            encontradas = buscar_pc(timeout=2)
+            if encontradas:
+                ventana.after(0, lambda: aplicar_ip(encontradas[0]))
+                ventana.after(0, lambda: lbl_buscar.config(text=""))
+                ventana.after(0, lambda: mostrar_mensaje(
+                    f"PC encontrada: {encontradas[0]}"
+                ))
+                return
+            ventana.after(0, lambda: lbl_buscar.config(
+                text="Buscando PCs en la red..."
+            ))
+        ventana.after(0, lambda: lbl_buscar.config(text=""))
+
+    threading.Thread(target=_loop, daemon=True).start()
 
 
 def abrir_config():
@@ -361,6 +386,7 @@ frame_barra.pack(fill="x", padx=8, pady=(0, 2))
 
 btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico)
 btn_buscar.pack(side=tk.LEFT, padx=(0, 4))
+btn_buscar.config(text="Buscar PC")
 
 btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config)
 btn_config.pack(side=tk.LEFT)
@@ -383,7 +409,7 @@ hilo_servidor.start()
 hilo_discover = threading.Thread(target=escuchar_discovery, daemon=True)
 hilo_discover.start()
 
-ventana.after(500, buscar_automatico)
+ventana.after(500, autodescubrir_continuo)
 
 ventana.mainloop()
 sock_servidor.close()

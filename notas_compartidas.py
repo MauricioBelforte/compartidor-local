@@ -287,13 +287,26 @@ def aplicar_ip(ip):
         actualizar_etiquetas_estado()
 
 
-def autodescubrir():
-    encontradas = buscar_pc()
-    if encontradas:
-        aplicar_ip(encontradas[0])
-        ventana.after(0, lambda: caja.insert(
-            tk.END, f"\n[PC encontrada: {encontradas[0]}]\n"
-        ))
+def autodescubrir_continuo():
+    if IP_OTRA_PC:
+        return
+
+    def _loop():
+        while not IP_OTRA_PC:
+            encontradas = buscar_pc(timeout=2)
+            if encontradas:
+                ventana.after(0, lambda: aplicar_ip(encontradas[0]))
+                ventana.after(0, lambda: lbl_buscar.config(text=""))
+                ventana.after(0, lambda: caja.insert(
+                    tk.END, f"\n[PC encontrada: {encontradas[0]}]\n"
+                ))
+                return
+            ventana.after(0, lambda: lbl_buscar.config(
+                text="Buscando PCs en la red..."
+            ))
+        ventana.after(0, lambda: lbl_buscar.config(text=""))
+
+    threading.Thread(target=_loop, daemon=True).start()
 
 
 def pedir_ip():
@@ -310,22 +323,26 @@ def pedir_ip():
 
 
 def buscar_automatico():
+    if IP_OTRA_PC:
+        mostrar_mensaje(f"Ya conectado a {IP_OTRA_PC}")
+        return
     lbl_buscar.config(text="Buscando...")
     btn_buscar.config(state=tk.DISABLED)
 
     def _buscar():
-        encontradas = buscar_pc(timeout=3)
+        encontradas = buscar_pc(timeout=4)
         if encontradas:
             ventana.after(0, lambda: aplicar_ip(encontradas[0]))
             ventana.after(0, lambda: mostrar_mensaje(
                 f"PC encontrada: {encontradas[0]}"
             ))
-            ventana.after(0, lambda: lbl_buscar.config(text="Buscar PC"))
+            ventana.after(0, lambda: lbl_buscar.config(text=""))
+            ventana.after(0, lambda: btn_buscar.config(state=tk.NORMAL, text="Buscar PC"))
         else:
             ventana.after(0, lambda: lbl_buscar.config(
                 text="No se encontro ninguna PC (reintenta)"
             ))
-        ventana.after(0, lambda: btn_buscar.config(state=tk.NORMAL))
+            ventana.after(0, lambda: btn_buscar.config(state=tk.NORMAL))
 
     threading.Thread(target=_buscar, daemon=True).start()
 
@@ -482,8 +499,8 @@ hilo_servidor.start()
 hilo_discover = threading.Thread(target=escuchar_discovery, daemon=True)
 hilo_discover.start()
 
-# ---- Autodescubrimiento al inicio ----
-ventana.after(500, autodescubrir)
+# ---- Autodescubrimiento continuo al inicio ----
+ventana.after(500, autodescubrir_continuo)
 
 ventana.mainloop()
 
