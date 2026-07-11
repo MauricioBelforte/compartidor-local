@@ -155,7 +155,27 @@ Mensajes entre modelos/
 6. **No eliminar mensajes anteriores:** El hilo completo debe conservarse para trazabilidad.
 7. **ESTADO-PARALELO.md:** Mantener actualizado para saber qué modelo trabaja en cada tema.
 
-## 11. Documentación de Nuevos Componentes (DOCUMENTACION)
+## 11. Protocolo de Push (Commits Completos y Detallados)
+Cuando el usuario solicite explícitamente *"hace un push o subilo a github o similar"*, el Agente debe seguir el siguiente flujo de trabajo obligatorio:
+1. **Verificar el último commit en el remoto:** Revisar el último commit subido (por ejemplo, mediante `git log origin/main -1` o la rama correspondiente).
+2. **Revisar el historial de cambios locales, los logs:** Comparar el estado actual del repositorio local contra la última versión subida (por ejemplo, mediante `git diff --stat origin/main`).
+3. **Analizar los cambios en detalle:** Examinar archivo por archivo los cambios realizados (por ejemplo, mediante `git diff origin/main`) para comprender el alcance completo de las modificaciones.
+4. **Redactar un commit completo y estructurado:**
+   - **Idioma:** Español, con tiempo verbal en pasado descriptivo (pasivo o impersonal).
+   - **Título:** Un título descriptivo que resuma el cambio principal.
+   - **Cuerpo (opcional):** Si hay múltiples cambios, incluir una lista con viñetas detallando cada modificación encontrada.
+5. **Ejecutar el commit y push:** Una vez redactado el mensaje, agregar los archivos, realizar el commit y ejecutar el push, informando al usuario del resultado.
+- **Ejemplos de formato de commit:**
+  ```
+  Se actualizó la documentación de la Práctica 4
+  
+  - Se agregó la guía de estudio teórica de UART
+  - Se corrigió el diagrama temporal del Ejercicio 1
+  - Se eliminaron archivos binarios obsoletos del directorio
+  ```
+**Nota:** Durante el push, es posible que se muestren advertencias sobre la conversión de saltos de línea (LF a CRLF). Esto es normal en entornos Windows y no afecta la integridad de los archivos.
+
+## 12. Documentación de Nuevos Componentes (DOCUMENTACION)
 Al crear un nuevo componente o pipeline (ej: nueva integración con un servicio):
 1. Verificar el próximo número en `DOCUMENTACION/README.md`.
 2. Crear carpeta `DOCUMENTACION/{NN}-Nombre/`.
@@ -165,13 +185,13 @@ Al crear un nuevo componente o pipeline (ej: nueva integración con un servicio)
 6. Crear los 5 archivos obligatorios en `plan-actual/` (pueden ser copia de plan-inicial al inicio).
 7. Actualizar `DOCUMENTACION/README.md`.
 
-## 12. Verificación y Diagnóstico Post-Tarea
+## 13. Verificación y Diagnóstico Post-Tarea
 Antes de dar una tarea por terminada:
 1. **Verificar el inicio:** Ejecutar el comando de desarrollo correspondiente al proyecto (ej: `npm run dev`, `python manage.py runserver`, `cargo run`, etc.).
 2. **Sin Errores en Consola:** Asegurarse de que no haya errores de compilación/linting y que la aplicación levante exitosamente.
 3. **Flujo Completo:** Si modificaste procesos críticos, verificar localmente que funcionen correctamente antes de decir que la tarea está finalizada.
 
-## 13. Flujo de Trabajo: Documentación Primero (Documentation-First)
+## 14. Flujo de Trabajo: Documentación Primero (Documentation-First)
 
 Este es el **flujo de trabajo obligatorio**:
 
@@ -190,7 +210,7 @@ Este es el **flujo de trabajo obligatorio**:
 5. Actualizar los `*-ACTUAL.md` de la raíz si el cambio es significativo (arquitectura, flujos principales).
 6. Generar log en `Logs/`.
 
-## 14. Modularización de Flujos Complejos
+## 15. Modularización de Flujos Complejos
 
 Cuando se desarrolle una funcionalidad nueva que comparta lógica con flujos existentes que ya funcionan:
 
@@ -201,7 +221,7 @@ Cuando se desarrolle una funcionalidad nueva que comparta lógica con flujos exi
    - Esto permite que el nuevo flujo pueda hacer cambios agresivos sin riesgo de romper los flujos existentes.
 3. **Documentar la decisión:** En los archivos del componente (`03-Diseno.md` o `04-Codigo.md`), explicar por qué se optó por un flujo separado y qué comparte con los flujos existentes.
 
-## 15. Flujos Bloqueados (Estables) — NO MODIFICAR
+## 16. Flujos Bloqueados (Estables) — NO MODIFICAR
 
 Estos flujos han sido verificados y no deben modificarse. Cualquier cambio debe hacerse en un flujo paralelo nuevo.
 
@@ -211,7 +231,7 @@ Estos flujos han sido verificados y no deben modificarse. Cualquier cambio debe 
 |-------|-------------|------------|-------------|
 | [ ] | | | |
 
-## 16. Trabajo en Paralelo entre Agentes
+## 17. Trabajo en Paralelo entre Agentes
 
 Cuando múltiples agentes trabajen simultáneamente, usar el sistema de chat por temas definido en la sección 10:
 
@@ -223,7 +243,7 @@ Cuando múltiples agentes trabajen simultáneamente, usar el sistema de chat por
 6. Los agentes se identifican con su nombre/modelo (ej: `Claude`, `GPT-4`, `Gemini`, `DeepSeek`).
 7. **Usar carpetas por tema** para cada problema/feature (sección 10.1). Si dos agentes ocupan temas distintos → pueden trabajar en paralelo sin issues.
 
-## 17. Sistema de Rotación de Logs
+## 18. Sistema de Rotación de Logs
 
 El proyecto implementa un sistema automático de rotación de logs para evitar que los archivos crezcan indefinidamente.
 
@@ -281,7 +301,7 @@ Si necesitas agregar logging en el código:
 
 **NN** = Número secuencial (se incrementa automáticamente al mover logs existentes)
 
-## 18. Archivo de Hilos de Chat Resueltos (RESUELTOS)
+## 19. Archivo de Hilos de Chat Resueltos (RESUELTOS)
 
 Cuando un problema analizado en `Mensajes entre modelos/` se considere **sustancialmente resuelto** (aunque pueda tener retoques pendientes):
 
@@ -299,7 +319,7 @@ Cuando un problema analizado en `Mensajes entre modelos/` se considere **sustanc
    - O crear un hilo nuevo referenciando al anterior
 6. **Actualizar `ESTADO-PARALELO.md`:** La tarea se mueve al historial de completadas con la fecha de archivo.
 
-## 19. Empaquetado y Distribución
+## 20. Empaquetado y Distribución
 
 > **Nota:** Esta sección debe personalizarse según el tipo de proyecto (web, desktop, móvil, librería, etc.).
 

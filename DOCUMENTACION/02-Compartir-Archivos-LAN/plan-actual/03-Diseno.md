@@ -3,9 +3,10 @@
 Documentación del componente **Compartir archivos LAN**: transferencia de archivos entre 2 PCs de la misma red local.
 
 ## Arquitectura
-Arquitectura simétrica peer-to-peer: el mismo programa corre en las dos PCs. Cada instancia:
-- Escucha conexiones TCP entrantes en un puerto fijo (`MI_PUERTO`).
-- Puede iniciar conexiones TCP salientes a la otra PC (`IP_OTRA_PC`, `PUERTO_OTRA_PC`) para enviar archivos.
+El componente de archivos está integrado en una app unificada (`notas_compartidas.py`) con pestañas ttk.Notebook. Arquitectura simétrica peer-to-peer: el mismo programa corre en las dos PCs. Cada instancia:
+- **Pestaña "Texto en vivo"**: Escucha/envía texto vía UDP puerto 50505
+- **Pestaña "Archivos"**: Escucha conexiones TCP entrantes en puerto 50506 y puede iniciar conexiones salientes para enviar archivos
+- **Descubrimiento automático**: Escucha/envía broadcast UDP puerto 50507 para encontrar la otra PC automáticamente
 - Maneja transferencias simultáneas como emisor y receptor (en hilos separados).
 
 No hay servidor central ni un tercer proceso involucrado: es una conexión directa entre las dos máquinas.
@@ -14,8 +15,22 @@ No hay servidor central ni un tercer proceso involucrado: es una conexión direc
 
 ```mermaid
 flowchart LR
-    A["PC A<br/>archivos_compartidos.py"] -- "TCP :50506<br/>(metadatos + archivo)" --> B["PC B<br/>archivos_compartidos.py"]
-    B -- "TCP :50506<br/>(metadatos + archivo)" --> A
+    subgraph PC_A["PC A - notas_compartidas.py"]
+        T1["Pestaña Texto<br/>(UDP 50505)"]
+        A1["Pestaña Archivos<br/>(TCP 50506)"]
+        D1["Discovery<br/>(UDP 50507)"]
+    end
+    subgraph PC_B["PC B - notas_compartidas.py"]
+        T2["Pestaña Texto<br/>(UDP 50505)"]
+        A2["Pestaña Archivos<br/>(TCP 50506)"]
+        D2["Discovery<br/>(UDP 50507)"]
+    end
+    T1 -- "UDP :50505<br/>texto" --> T2
+    T2 -- "UDP :50505<br/>texto" --> T1
+    A1 -- "TCP :50506<br/>metadatos + archivo" --> A2
+    A2 -- "TCP :50506<br/>metadatos + archivo" --> A1
+    D1 -- "UDP :50507<br/>broadcast" --> D2
+    D2 -- "UDP :50507<br/>broadcast" --> D1
 ```
 
 ## Protocolo de Transferencia
@@ -73,10 +88,13 @@ Emisor                          Receptor
 - El hilo principal solo maneja eventos de usuario; los hilos de red solo hacen I/O y agendan actualizaciones.
 
 ## Decisiones de diseño relevantes
+- **App unificada con pestañas**: ttk.Notebook integra "Texto en vivo" y "Archivos" en una sola ventana, mejorando UX y compartiendo configuración.
 - **TCP en lugar de UDP**: garantiza entrega y orden; manejo de flujo automático; ideal para archivos.
 - **Protocolo simple pero estructurado**: metadatos primero para que el receptor sepa qué esperar; permite validación antes de recibir contenido.
 - **Chunking**: lectura/envío en bloques fijos (4096 bytes) para no cargar archivos grandes en memoria y permitir actualización de progreso.
 - **Hilos separados por conexión**: cada transferencia entrante tiene su propio hilo, permitiendo múltiples recepciones simultáneas (aunque inicialmente se limitará a una a la vez).
-- **Carpeta de descargas configurable`: por defecto `descargas/` junto al script, pero puede cambiarse en constantes.
-- **Sobrescritura**: si existe archivo con mismo nombre, se agregará timestamp (ej: `archivo_20260710_120534.txt`) para evitar pérdida de datos.
+- **Carpeta de descargas configurable**: por defecto `descargas/` junto al script, pero puede cambiarse en constantes.
+- **Sobrescritura**: si existe archivo con mismo nombre, se agrega timestamp automáticamente para evitar pérdida de datos.
 - **Transferencia uno-a-uno**: mientras se envía un archivo, no se puede iniciar otro envío; mientras se recibe un archivo, nuevas conexiones se rechazan temporalmente.
+- **Descubrimiento automático**: broadcast UDP puerto 50507 permite encontrar la otra PC sin configuración manual.
+- **Configuración persistente**: IP guardada en `config.json` para no reconfigurar cada vez.

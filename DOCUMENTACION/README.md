@@ -13,6 +13,7 @@ Este proyecto usa un sistema de documentación estructurado para rastrear el est
 | Número | Nombre | Estado |
 |--------|-------|--------|
 | 01 | Notas compartidas LAN | Implementado |
-| 02 | Compartir archivos LAN | En planificación |
+| 02 | Compartir archivos LAN | Implementado |
+| 03 | Multi-PC Soporte | En planificación |
 
-## Próximo número: 03
+## Próximo número: 04

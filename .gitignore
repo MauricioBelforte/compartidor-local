@@ -5,3 +5,8 @@ __pycache__/
 dist/
 build/
 *.spec
+
+# Archivos de datos locales (no se suben al repositorio)
+base de datos.txt
+*.sqlite
+*.db

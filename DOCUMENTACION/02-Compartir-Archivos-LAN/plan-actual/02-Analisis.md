@@ -29,8 +29,8 @@ El problema es transferir datos binarios (archivos) entre dos nodos de la misma 
 ### Integración con notas compartidas
 | Opción | Descripción | Observación |
 |---|---|---|
-| Misma ventana, mismo archivo | Agregar funcionalidad de archivos a `notas_compartidas.py` | Mezcla responsabilidades; archivo crece; difícil mantener |
-| **Archivo separado, puerto diferente (elegido)** | `archivos_compartidos.py` con puerto TCP 50506 | Separación clara; coexistencia con notas; modularidad; puede ejecutarse en paralelo |
+| Archivo separado, puerto diferente | `archivos_compartidos.py` con puerto TCP 50506 | Separación clara; coexistencia con notas; modularidad |
+| **App unificada con pestañas (elegido)** | `notas_compartidas.py` con ttk.Notebook (Texto en vivo + Archivos) | Mejor UX; un solo proceso; configuración compartida; descubrimiento automático compartido |
 
 ### Interfaz gráfica
 | Opción | Descripción | Observación |
@@ -39,11 +39,14 @@ El problema es transferir datos binarios (archivos) entre dos nodos de la misma 
 | **tkinter (elegido)** | Interfaz gráfica nativa | Consistente con notas compartidas; fácil de usar; solo librería estándar |
 
 ## Decisiones clave
-1. **Arquitectura simétrica**: un solo archivo (`archivos_compartidos.py`), usado sin cambios de lógica en las dos PCs; solo cambia el valor de `IP_OTRA_PC`.
-2. **TCP sobre el puerto 50506**: puerto alto, diferente del 50505 usado por notas compartidas (UDP), para evitar conflictos.
-3. **Protocolo simple**: enviar metadatos primero (nombre archivo, tamaño), luego el contenido binario. Esto permite al receptor saber qué esperar y validar integridad.
-4. **Chunking**: leer y enviar en bloques (chunks) de tamaño fijo (ej: 4096 bytes) para no cargar archivos grandes en memoria y permitir actualización de progreso.
-5. **Barra de progreso**: mostrar porcentaje y bytes transferidos al usuario durante la transferencia.
-6. **Carpeta de descargas configurable**: por defecto una carpeta `descargas/` en el mismo directorio del script, pero configurable.
-7. **Sobrescritura de archivos**: si ya existe un archivo con el mismo nombre, preguntar al usuario o agregar timestamp (decisión pendiente).
-8. **Transferencia uno-a-uno**: una transferencia a la vez; si llega una nueva mientras hay una en curso, rechazar o encolar (decisión pendiente).
+1. **App unificada con pestañas**: `notas_compartidas.py` con ttk.Notebook integra "Texto en vivo" (UDP 50505) y "Archivos" (TCP 50506) en una sola ventana.
+2. **Arquitectura simétrica**: un solo archivo usado sin cambios de lógica en las dos PCs; solo cambia el valor de `IP_OTRA_PC`.
+3. **TCP sobre el puerto 50506**: puerto alto, diferente del 50505 usado por notas compartidas (UDP), para evitar conflictos.
+4. **Descubrimiento automático de IP**: broadcast UDP en puerto 50507 permite encontrar automáticamente la otra PC en la red.
+5. **Configuración persistente**: IP guardada en `config.json` para no tener que reconfigurar cada vez.
+6. **Protocolo simple**: enviar metadatos primero (nombre archivo, tamaño), luego el contenido binario. Esto permite al receptor saber qué esperar y validar integridad.
+7. **Chunking**: leer y enviar en bloques (chunks) de tamaño fijo (4096 bytes) para no cargar archivos grandes en memoria y permitir actualización de progreso.
+8. **Barra de progreso**: mostrar porcentaje y bytes transferidos al usuario durante la transferencia.
+9. **Carpeta de descargas configurable**: por defecto `descargas/` en el mismo directorio del script.
+10. **Sobrescritura de archivos**: si ya existe un archivo con el mismo nombre, se agrega timestamp automáticamente para evitar pérdida de datos.
+11. **Transferencia uno-a-uno**: una transferencia a la vez; si llega una nueva mientras hay una en curso, se rechaza temporalmente.

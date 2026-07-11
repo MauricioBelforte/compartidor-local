@@ -6,13 +6,13 @@ Documentación del componente **Compartir archivos LAN**: transferencia de archi
 Dos PCs en la misma red doméstica necesitan un modo rápido de compartir archivos (documentos, imágenes, código, etc.) sin depender de servicios externos — email, WhatsApp Web, USB, servicios en la nube — que agregan pasos innecesarios para algo que está a un salto de red de distancia. Aunque ya existe el componente de notas compartidas para texto, este no maneja archivos binarios.
 
 ## Objetivo
-Crear una aplicación que permita transferir archivos entre dos PCs de la misma red local de forma directa y rápida, con una interfaz simple que integre o complemente la funcionalidad de notas compartidas existente.
+Crear una aplicación que permita transferir archivos entre dos PCs de la misma red local de forma directa y rápida, integrada en una app unificada con pestañas que incluye también la funcionalidad de notas compartidas.
 
 ## Alcance
 - Comunicación exclusivamente dentro de la red local (LAN). No usa internet ni servidores externos.
 - Transferencia de archivos de cualquier tipo (texto, imágenes, binarios, etc.).
 - Pensado para 2 PCs (escalar a más equipos queda fuera del alcance actual — ver `05-Checklist.md`).
-- Interfaz de escritorio nativa (ventana propia), consistente con el componente de notas compartidas.
+- Interfaz de escritorio nativa (ventana propia) con pestañas: "Texto en vivo" y "Archivos" en una sola aplicación unificada.
 - Uso personal en una red de confianza, no en redes públicas o compartidas con desconocidos.
 - Tamaño de archivos: inicialmente enfocado en archivos pequeños/medianos (hasta unos 100 MB). Archivos muy grandes pueden requerir optimizaciones adicionales.
 
@@ -28,8 +28,10 @@ Crear una aplicación que permita transferir archivos entre dos PCs de la misma 
 - Visualización de progreso de transferencia (porcentaje, bytes transferidos)
 - Recepción automática de archivos con guardado en carpeta configurable
 - Indicador de estado (conectado/desconectado, transferencia en curso)
-- Historial simple de archivos transferidos (opcional pero deseable)
-- Cancelación de transferencia en curso (opcional pero deseable)
+- Historial simple de archivos transferidos (implementado)
+- Descubrimiento automático de IP vía broadcast UDP (implementado)
+- Configuración persistente de IP en JSON (implementado)
+- Integración en app unificada con pestañas (implementado)
 
 ## Requisitos No Funcionales
 - Fiabilidad: uso de TCP para garantizar entrega completa de archivos
