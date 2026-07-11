@@ -357,8 +357,8 @@ def abrir_config():
 
 ventana = tk.Tk()
 ventana.title("Compartidor Local")
-ventana.geometry("540x520")
-ventana.minsize(480, 400)
+ventana.geometry("620x600")
+ventana.minsize(560, 500)
 
 # --- Cargar config guardada ---
 IP_OTRA_PC = cargar_config()
@@ -373,8 +373,8 @@ notebook.add(frame_texto, text="  Texto en vivo  ")
 caja = scrolledtext.ScrolledText(frame_texto, wrap=tk.WORD, font=("Consolas", 12))
 caja.pack(expand=True, fill="both", padx=8, pady=8)
 
-lbl_estado_texto = tk.Label(frame_texto, fg="gray")
-lbl_estado_texto.pack(pady=(0, 6))
+lbl_estado_texto = tk.Label(frame_texto, fg="gray", font=("Consolas", 10))
+lbl_estado_texto.pack(pady=(0, 8))
 
 
 def actualizar_caja(texto):
@@ -452,8 +452,8 @@ frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
 lista_historial = tk.Listbox(frame_historial, height=6, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
-lbl_estado_archivos = tk.Label(frame_archivos, fg="gray")
-lbl_estado_archivos.pack(pady=(0, 6))
+lbl_estado_archivos = tk.Label(frame_archivos, fg="gray", font=("Consolas", 10))
+lbl_estado_archivos.pack(pady=(0, 8))
 
 
 def actualizar_progreso_envio(pct, bytes_actuales, bytes_totales):
@@ -478,17 +478,18 @@ def mostrar_mensaje(texto):
 notebook.pack(expand=True, fill="both")
 
 # ---- Barra inferior ----
-frame_barra = tk.Frame(ventana)
-frame_barra.pack(fill="x", padx=8, pady=(0, 6))
+frame_barra = tk.Frame(ventana, height=36)
+frame_barra.pack(fill="x", padx=12, pady=(4, 10))
+frame_barra.pack_propagate(False)
 
-btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico)
-btn_buscar.pack(side=tk.LEFT, padx=(0, 4))
+btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico, padx=8)
+btn_buscar.pack(side=tk.LEFT, padx=(0, 6))
 
-btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config)
+btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config, padx=8)
 btn_config.pack(side=tk.LEFT)
 
-lbl_buscar = tk.Label(frame_barra, text="", fg="gray")
-lbl_buscar.pack(side=tk.LEFT, padx=(8, 0))
+lbl_buscar = tk.Label(frame_barra, text="", fg="gray", font=("Consolas", 9))
+lbl_buscar.pack(side=tk.LEFT, padx=(12, 0))
 
 actualizar_etiquetas_estado()
 

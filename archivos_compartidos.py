@@ -337,7 +337,8 @@ def mostrar_mensaje(texto):
 # ---- UI ----
 ventana = tk.Tk()
 ventana.title("Archivos compartidos")
-ventana.geometry("520x480")
+ventana.geometry("580x550")
+ventana.minsize(520, 480)
 
 IP_OTRA_PC = cargar_config()
 
@@ -381,26 +382,27 @@ frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
 lista_historial = tk.Listbox(frame_historial, height=6, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
-frame_barra = tk.Frame(ventana)
-frame_barra.pack(fill="x", padx=8, pady=(0, 2))
+frame_barra = tk.Frame(ventana, height=36)
+frame_barra.pack(fill="x", padx=12, pady=(4, 10))
+frame_barra.pack_propagate(False)
 
-btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico)
-btn_buscar.pack(side=tk.LEFT, padx=(0, 4))
-btn_buscar.config(text="Buscar PC")
+btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico, padx=8)
+btn_buscar.pack(side=tk.LEFT, padx=(0, 6))
 
-btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config)
+btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config, padx=8)
 btn_config.pack(side=tk.LEFT)
 
-lbl_buscar = tk.Label(frame_barra, text="", fg="gray")
-lbl_buscar.pack(side=tk.LEFT, padx=(8, 0))
+lbl_buscar = tk.Label(frame_barra, text="", fg="gray", font=("Consolas", 9))
+lbl_buscar.pack(side=tk.LEFT, padx=(12, 0))
 
 ip_mostrar = IP_OTRA_PC if IP_OTRA_PC else "SIN CONFIGURAR"
 lbl_estado = tk.Label(
     ventana,
     text=f"TCP :{MI_PUERTO}  ->  {ip_mostrar}:{PUERTO_OTRA_PC}  |  Descargas: {CARPETA_DESCARGAS}/",
     fg="gray",
+    font=("Consolas", 10),
 )
-lbl_estado.pack(pady=(0, 6))
+lbl_estado.pack(pady=(0, 10))
 
 # ---- Arrancar hilos ----
 hilo_servidor = threading.Thread(target=aceptar_conexiones, daemon=True)
