@@ -2,31 +2,63 @@
 NOTAS COMPARTIDAS - Texto en vivo + Archivos LAN.
 Un solo script. Dos modos. Misma red local.
 
-Usa este MISMO archivo en las dos maquinas. Lo unico que cambia
-de una PC a la otra es el valor de IP_OTRA_PC, mas abajo.
+Usa este MISMO archivo en las dos maquinas.
+La IP de la otra PC se configura desde la interfaz (no editar el codigo).
 """
 
+import json
 import os
 import socket
 import struct
 import threading
 import tkinter as tk
-from tkinter import filedialog, scrolledtext, ttk
+from tkinter import filedialog, scrolledtext, simpledialog, ttk
 from datetime import datetime
 
-# ---------- CONFIGURACION: esto es lo unico que hay que tocar ----------
-IP_OTRA_PC = "192.168.1.50"    # <-- poné aca la IP local de la OTRA pc
-
-# Texto en vivo (UDP)
+# ---------- CONFIGURACION (solo editar si queres cambiar puertos) ----------
+CONFIG_FILE = "config.json"
 MI_PUERTO_TEXTO = 50505
 PUERTO_TEXTO_OTRA = 50505
-
-# Archivos (TCP)
 MI_PUERTO_ARCHIVOS = 50506
 PUERTO_ARCHIVOS_OTRA = 50506
 CARPETA_DESCARGAS = "descargas"
 CHUNK_SIZE = 4096
 # -------------------------------------------------------------------------
+
+IP_OTRA_PC = ""
+
+
+def ruta_config():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILE)
+
+
+def cargar_config():
+    global IP_OTRA_PC
+    ruta = ruta_config()
+    if os.path.exists(ruta):
+        with open(ruta, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        IP_OTRA_PC = cfg.get("ip_otra_pc", "")
+    return IP_OTRA_PC
+
+
+def guardar_config(ip):
+    with open(ruta_config(), "w", encoding="utf-8") as f:
+        json.dump({"ip_otra_pc": ip}, f, indent=2)
+
+
+def pedir_ip():
+    ip = simpledialog.askstring(
+        "Configurar IP",
+        "IP local de la OTRA PC (ej: 192.168.1.50):",
+        parent=ventana,
+        initialvalue=IP_OTRA_PC,
+    )
+    if ip and ip.strip():
+        ip = ip.strip()
+        guardar_config(ip)
+        return ip
+    return IP_OTRA_PC
 
 
 # ============================================================
@@ -82,6 +114,9 @@ def enviar_archivo(sock, ruta_archivo, tamaño):
 
 def iniciar_envio(ruta_archivo):
     global enviando
+    if not IP_OTRA_PC:
+        ventana.after(0, mostrar_mensaje, "Configura la IP de la otra PC primero.")
+        return
     if enviando:
         ventana.after(0, mostrar_mensaje, "Ya hay un envio en curso.")
         return
@@ -189,14 +224,42 @@ def ejecutar_envio():
         iniciar_envio(ruta)
 
 
+def actualizar_etiquetas_estado():
+    ip_mostrar = IP_OTRA_PC if IP_OTRA_PC else "SIN CONFIGURAR"
+    lbl_estado_texto.config(
+        text=f"UDP :{MI_PUERTO_TEXTO}  ->  {ip_mostrar}:{PUERTO_TEXTO_OTRA}"
+    )
+    lbl_estado_archivos.config(
+        text=f"TCP :{MI_PUERTO_ARCHIVOS}  ->  {ip_mostrar}:{PUERTO_ARCHIVOS_OTRA}  |  Descargas: {CARPETA_DESCARGAS}/"
+    )
+
+
+def abrir_config():
+    global IP_OTRA_PC
+    ip_nueva = pedir_ip()
+    if ip_nueva and ip_nueva != IP_OTRA_PC:
+        IP_OTRA_PC = ip_nueva
+        actualizar_etiquetas_estado()
+        if not getattr(ventana, "_config_avisada", False):
+            caja.insert(tk.END, f"\n[IP configurada: {IP_OTRA_PC}]\n")
+            ventana._config_avisada = True
+
+
 # ============================================================
 # INTERFAZ GRAFICA
 # ============================================================
 
 ventana = tk.Tk()
-ventana.title("Notas compartidas")
+ventana.title("Compartidor Local")
 ventana.geometry("540x520")
 ventana.minsize(480, 400)
+
+# --- Cargar o pedir config ---
+IP_OTRA_PC = cargar_config()
+if not IP_OTRA_PC:
+    IP_OTRA_PC = pedir_ip()
+    if IP_OTRA_PC:
+        guardar_config(IP_OTRA_PC)
 
 notebook = ttk.Notebook(ventana)
 
@@ -208,11 +271,7 @@ notebook.add(frame_texto, text="  Texto en vivo  ")
 caja = scrolledtext.ScrolledText(frame_texto, wrap=tk.WORD, font=("Consolas", 12))
 caja.pack(expand=True, fill="both", padx=8, pady=8)
 
-lbl_estado_texto = tk.Label(
-    frame_texto,
-    text=f"UDP :{MI_PUERTO_TEXTO}  ->  {IP_OTRA_PC}:{PUERTO_TEXTO_OTRA}",
-    fg="gray",
-)
+lbl_estado_texto = tk.Label(frame_texto, fg="gray")
 lbl_estado_texto.pack(pady=(0, 6))
 
 
@@ -232,6 +291,8 @@ def escuchar_texto():
 
 
 def enviar_texto(event=None):
+    if not IP_OTRA_PC:
+        return
     contenido = caja.get("1.0", "end-1c")
     try:
         sock_texto.sendto(contenido.encode("utf-8"), (IP_OTRA_PC, PUERTO_TEXTO_OTRA))
@@ -289,11 +350,7 @@ frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
 lista_historial = tk.Listbox(frame_historial, height=6, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
-lbl_estado_archivos = tk.Label(
-    frame_archivos,
-    text=f"TCP :{MI_PUERTO_ARCHIVOS}  ->  {IP_OTRA_PC}:{PUERTO_ARCHIVOS_OTRA}  |  Descargas: {CARPETA_DESCARGAS}/",
-    fg="gray",
-)
+lbl_estado_archivos = tk.Label(frame_archivos, fg="gray")
 lbl_estado_archivos.pack(pady=(0, 6))
 
 
@@ -317,6 +374,15 @@ def mostrar_mensaje(texto):
 
 
 notebook.pack(expand=True, fill="both")
+
+# ---- Barra inferior con boton de config ----
+frame_barra = tk.Frame(ventana)
+frame_barra.pack(fill="x", padx=8, pady=(0, 6))
+
+btn_config = tk.Button(frame_barra, text="Configurar IP", command=abrir_config)
+btn_config.pack(side=tk.RIGHT)
+
+actualizar_etiquetas_estado()
 
 # ---- Arrancar servidor TCP ----
 hilo_servidor = threading.Thread(target=aceptar_conexiones, daemon=True)

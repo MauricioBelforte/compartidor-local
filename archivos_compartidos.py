@@ -1,26 +1,43 @@
 """
-Archivos compartidos - transferencia de archivos entre 2 PCs de la misma red local.
-
-Usa este MISMO archivo en las dos maquinas. Lo unico que cambia
-de una PC a la otra es el valor de IP_OTRA_PC, mas abajo.
+ARCHIVOS COMPARTIDOS - Transferencia de archivos entre 2 PCs en LAN.
+Version standalone. La IP de la otra PC se configura desde la interfaz.
 """
 
+import json
 import os
 import socket
 import struct
 import threading
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, simpledialog, ttk
 from datetime import datetime
 
-
-# ---------- CONFIGURACION: esto es lo unico que hay que tocar ----------
-MI_PUERTO = 50506              # puerto donde ESTA pc escucha (igual en las 2)
-IP_OTRA_PC = "192.168.1.50"    # <-- poné aca la IP local de la OTRA pc
+CONFIG_FILE = "config.json"
+MI_PUERTO = 50506
 PUERTO_OTRA_PC = 50506
 CARPETA_DESCARGAS = "descargas"
 CHUNK_SIZE = 4096
-# -------------------------------------------------------------------------
+
+IP_OTRA_PC = ""
+
+
+def ruta_config():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILE)
+
+
+def cargar_config():
+    global IP_OTRA_PC
+    ruta = ruta_config()
+    if os.path.exists(ruta):
+        with open(ruta, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        IP_OTRA_PC = cfg.get("ip_otra_pc", "")
+    return IP_OTRA_PC
+
+
+def guardar_config(ip):
+    with open(ruta_config(), "w", encoding="utf-8") as f:
+        json.dump({"ip_otra_pc": ip}, f, indent=2)
 
 
 sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -63,6 +80,9 @@ def enviar_archivo(sock, ruta_archivo, tamaño):
 
 def iniciar_envio(ruta_archivo):
     global enviando
+    if not IP_OTRA_PC:
+        ventana.after(0, mostrar_mensaje, "Configura la IP de la otra PC primero.")
+        return
     if enviando:
         ventana.after(0, mostrar_mensaje, "Ya hay un envio en curso.")
         return
@@ -189,11 +209,37 @@ def mostrar_mensaje(texto):
     lista_historial.see(tk.END)
 
 
-# ----- Interfaz grafica -----
+def abrir_config():
+    global IP_OTRA_PC
+    ip = simpledialog.askstring(
+        "Configurar IP",
+        "IP local de la OTRA PC (ej: 192.168.1.50):",
+        parent=ventana,
+        initialvalue=IP_OTRA_PC,
+    )
+    if ip and ip.strip():
+        ip = ip.strip()
+        guardar_config(ip)
+        IP_OTRA_PC = ip
+        lbl_estado.config(
+            text=f"TCP :{MI_PUERTO}  ->  {IP_OTRA_PC}:{PUERTO_OTRA_PC}  |  Descargas: {CARPETA_DESCARGAS}/"
+        )
+
 
 ventana = tk.Tk()
 ventana.title("Archivos compartidos")
 ventana.geometry("520x480")
+
+IP_OTRA_PC = cargar_config()
+if not IP_OTRA_PC:
+    ip = simpledialog.askstring(
+        "Configurar IP",
+        "IP local de la OTRA PC (ej: 192.168.1.50):",
+        parent=ventana,
+    )
+    if ip and ip.strip():
+        IP_OTRA_PC = ip.strip()
+        guardar_config(IP_OTRA_PC)
 
 frame_seleccion = tk.Frame(ventana)
 frame_seleccion.pack(fill="x", padx=8, pady=(8, 4))
@@ -211,7 +257,6 @@ btn_enviar = tk.Button(
 )
 btn_enviar.pack(side=tk.RIGHT)
 
-# ---- Progreso de envio ----
 frame_envio = tk.LabelFrame(ventana, text="Envio", padx=6, pady=6)
 frame_envio.pack(fill="x", padx=8, pady=4)
 
@@ -221,7 +266,6 @@ progreso_envio.pack(fill="x")
 lbl_progreso_envio = tk.Label(frame_envio, text="En espera...", anchor="w")
 lbl_progreso_envio.pack(fill="x")
 
-# ---- Progreso de recepcion ----
 frame_recepcion = tk.LabelFrame(ventana, text="Recepcion", padx=6, pady=6)
 frame_recepcion.pack(fill="x", padx=8, pady=4)
 
@@ -231,20 +275,25 @@ progreso_recepcion.pack(fill="x")
 lbl_progreso_recepcion = tk.Label(frame_recepcion, text="En espera...", anchor="w")
 lbl_progreso_recepcion.pack(fill="x")
 
-# ---- Historial ----
 frame_historial = tk.LabelFrame(ventana, text="Historial", padx=6, pady=6)
 frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
 
 lista_historial = tk.Listbox(frame_historial, height=6, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
-# ---- Estado ----
-estado = tk.Label(
+frame_barra = tk.Frame(ventana)
+frame_barra.pack(fill="x", padx=8, pady=(0, 2))
+
+btn_config = tk.Button(frame_barra, text="Configurar IP", command=abrir_config)
+btn_config.pack(side=tk.RIGHT)
+
+ip_mostrar = IP_OTRA_PC if IP_OTRA_PC else "SIN CONFIGURAR"
+lbl_estado = tk.Label(
     ventana,
-    text=f"Escuchando en :{MI_PUERTO}  ·  Enviando a {IP_OTRA_PC}:{PUERTO_OTRA_PC}  ·  Descargas: {CARPETA_DESCARGAS}/",
+    text=f"TCP :{MI_PUERTO}  ->  {ip_mostrar}:{PUERTO_OTRA_PC}  |  Descargas: {CARPETA_DESCARGAS}/",
     fg="gray",
 )
-estado.pack(pady=(0, 6))
+lbl_estado.pack(pady=(0, 6))
 
 hilo_servidor = threading.Thread(target=aceptar_conexiones, daemon=True)
 hilo_servidor.start()
