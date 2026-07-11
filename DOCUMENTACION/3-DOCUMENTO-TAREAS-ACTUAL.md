@@ -7,6 +7,8 @@
 - [x] Pestaña "Archivos" con selección de archivo, barras de progreso, historial
 - [x] Ambos módulos de red arrancan al inicio (UDP + TCP simultáneos)
 - [x] Sin conflictos entre puertos (50505 UDP texto, 50506 TCP archivos)
+- [x] Layout Tkinter: barra inferior permanece visible al achicar la ventana (grid)
+- [x] Release v1.0.0 publicado con binario adjunto en GitHub
 
 ### Componente 01 — Notas Compartidas
 - [x] Definir arquitectura (P2P simétrico vs. cliente-servidor)

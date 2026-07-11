@@ -319,23 +319,113 @@ Cuando un problema analizado en `Mensajes entre modelos/` se considere **sustanc
    - O crear un hilo nuevo referenciando al anterior
 6. **Actualizar `ESTADO-PARALELO.md`:** La tarea se mueve al historial de completadas con la fecha de archivo.
 
-## 20. Empaquetado y Distribución
+## 20. Empaquetado y Distribución (PyInstaller)
 
-> **Nota:** Esta sección debe personalizarse según el tipo de proyecto (web, desktop, móvil, librería, etc.).
+**Proyecto:** Compartidor Local — ejecutable de escritorio en Python con Tkinter.
 
-Para generar el artefacto distribuible del proyecto:
+### 20.1. Generar el ejecutable
 
 ```bash
-# Comando(s) de build/package según el proyecto
+# Compilar con PyInstaller usando el spec versionado
+pyinstaller --clean --noconfirm CompartidorLocal.spec
 ```
 
-**Qué hace:**
-1. Compilación del código
-2. Empaquetado de dependencias
-3. Generación del artefacto final
+- **Input:** `notas_compartidas.py` (script principal) + `CompartidorLocal.spec` (configuración).
+- **Output:** `dist/CompartidorLocal.exe`.
+- **Importante:** el spec **debe** estar versionado (no estar en `.gitignore`).
+- El flag `--clean` borra caches previas y `--noconfirm` evita prompts.
 
-**Output:** [Describir el output esperado y su ubicación]
+### 20.2. Política de `.gitignore` para binarios
 
-**Notas:**
-- [Notas específicas del proceso de build/package]
-- [Consideraciones de distribución]
+```
+dist/         # artefactos finales (NO se versionan)
+build/        # temporales de PyInstaller (NO se versionan)
+*.spec        # ⚠ NO ignorar — el spec DEBE estar en el repo
+```
+
+### 20.3. Notas del proyecto
+- Tamaño aproximado del `.exe`: ~11 MB (sin compresión extra).
+- Lock frecuente: si `dist\CompartidorLocal.exe` está en uso (proceso abierto), PyInstaller falla con `PermissionError`. **Cerrar el ejecutable antes de regenerarlo**.
+- Plataforma: Windows 10/11 64-bit (probado con Python 3.13 + PyInstaller 6.x).
+
+---
+
+## 21. Procedimiento para crear / actualizar versiones release en GitHub
+
+> **Cuándo se aplica:** el usuario pide *"subi la version release"*, *"publica el release"*, *"actualiza el binario del release"*, o cualquier equivalente.
+
+### 21.1. Prerrequisitos
+- `gh` (GitHub CLI) instalado.
+- Autenticado: `gh auth login --web --git-protocol https` (abre navegador, one-time code).
+- Verificar autenticación: `gh auth status`.
+
+### 21.2. Flujo completo (paso a paso)
+
+1. **Verificar cambios locales:**
+   ```bash
+   git status --short
+   git log --oneline -5
+   ```
+
+2. **Regenerar el ejecutable con los últimos cambios:**
+   ```bash
+   # Asegurarse de que el .exe anterior NO esté en uso
+   pyinstaller --clean --noconfirm CompartidorLocal.spec
+   ```
+   Validar: `Get-Item .\dist\CompartidorLocal.exe`.
+
+3. **Commitear y pushear el código (si hay cambios pendientes):**
+   ```bash
+   git add <archivos>
+   git commit -m "Se <descripcion del cambio>"
+   git push origin main
+   ```
+
+4. **Publicar / actualizar el release:**
+   - **Crear release nuevo (primera vez):**
+     ```bash
+     gh release create v<MAJOR>.<MINOR>.<PATCH> .\dist\CompartidorLocal.exe#CompartidorLocal.exe --title "Compartidor Local v<X.Y.Z>" --notes "<changelog>"
+     ```
+   - **Actualizar binario de un release existente:**
+     ```bash
+     gh release upload v<X.Y.Z> .\dist\CompartidorLocal.exe#CompartidorLocal.exe --clobber
+     ```
+   El flag `--clobber` reemplaza el asset existente con el mismo nombre.
+
+5. **Confirmar resultado:**
+   ```bash
+   gh release view v<X.Y.Z> --json tagName,name,url,assets
+   ```
+
+6. **Documentar:**
+   - Generar log en `Logs/` siguiendo la sección 6 de este `AGENTS.md`.
+   - Si el cambio afecta arquitectura o flujos principales, actualizar `DOCUMENTACION/{NN}-*/plan-actual/`.
+
+### 21.3. Versionado (SemVer simplificado)
+- **MAJOR** (`1.x.x`): cambios incompatibles o rediseño de UI/arquitectura.
+- **MINOR** (`x.1.x`): nuevas funcionalidades (ej: nueva pestaña, nuevo modo).
+- **PATCH** (`x.x.1`): correcciones y mejoras menores (ej: layout, bugfix).
+
+### 21.4. Snippets rápidos (copiar y pegar)
+
+```powershell
+# Regenerar ejecutable
+pyinstaller --clean --noconfirm CompartidorLocal.spec
+
+# Actualizar binario del release actual (manteniendo la misma versión)
+gh release upload v1.0.0 .\dist\CompartidorLocal.exe#CompartidorLocal.exe --clobber
+```
+
+### 21.5. Errores comunes
+| Error | Causa | Solución |
+|-------|-------|----------|
+| `a release with the same tag name already exists` | El release ya existe | Usar `gh release upload` con `--clobber` |
+| `PermissionError: Access denied: 'dist\CompartidorLocal.exe'` | El .exe está abierto/ejecutándose | Cerrar la app y volver a compilar |
+| `You are not logged into any GitHub hosts` | `gh` no autenticado | `gh auth login --web` |
+| `LF will be replaced by CRLF` | Advertencia en Windows | **Ignorar**, no afecta la integridad |
+
+### 21.6. Release actual del proyecto
+- **Tag:** `v1.0.0`
+- **Asset:** `CompartidorLocal.exe` (~11 MB)
+- **URL:** https://github.com/MauricioBelforte/compartidor-local/releases/tag/v1.0.0
+
