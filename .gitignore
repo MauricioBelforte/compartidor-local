@@ -2,9 +2,10 @@ __pycache__/
 *.pyc
 *.pyo
 *.log
+
+# Artefactos de PyInstaller (no se suben al repo)
 dist/
 build/
-*.spec
 
 # Archivos de datos locales (no se suben al repositorio)
 base de datos.txt
