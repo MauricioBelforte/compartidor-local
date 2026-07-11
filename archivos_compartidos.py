@@ -1,6 +1,6 @@
 """
 ARCHIVOS COMPARTIDOS - Transferencia de archivos entre 2 PCs en LAN.
-Version standalone. La IP de la otra PC se configura desde la interfaz.
+Detecta automaticamente la otra PC en la red.
 """
 
 import json
@@ -13,6 +13,7 @@ from tkinter import filedialog, simpledialog, ttk
 from datetime import datetime
 
 CONFIG_FILE = "config.json"
+DISCOVER_PORT = 50507
 MI_PUERTO = 50506
 PUERTO_OTRA_PC = 50506
 CARPETA_DESCARGAS = "descargas"
@@ -40,6 +41,62 @@ def guardar_config(ip):
         json.dump({"ip_otra_pc": ip}, f, indent=2)
 
 
+def obtener_ip_local():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+    except:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+
+# ---- Descubrimiento ----
+sock_discover = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock_discover.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock_discover.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+sock_discover.bind(("0.0.0.0", DISCOVER_PORT))
+sock_discover.settimeout(0.5)
+
+DISCOVER_MSG = b"COMPARTIDOR_DISCOVER"
+RESPONSE_PREFIX = b"COMPARTIDOR_RESPONSE:"
+
+
+def escuchar_discovery():
+    mi_ip = obtener_ip_local()
+    while True:
+        try:
+            data, addr = sock_discover.recvfrom(1024)
+            if data == DISCOVER_MSG and addr[0] != mi_ip:
+                sock_discover.sendto(RESPONSE_PREFIX + mi_ip.encode(), addr)
+        except socket.timeout:
+            continue
+        except OSError:
+            break
+
+
+def buscar_pc(timeout=2):
+    encontradas = []
+    mi_ip = obtener_ip_local()
+    sock_discover.sendto(DISCOVER_MSG, ("255.255.255.255", DISCOVER_PORT))
+    inicio = datetime.now()
+    while (datetime.now() - inicio).total_seconds() < timeout:
+        try:
+            data, addr = sock_discover.recvfrom(1024)
+            if data.startswith(RESPONSE_PREFIX) and addr[0] != mi_ip:
+                ip = data[len(RESPONSE_PREFIX):].decode()
+                if ip not in encontradas:
+                    encontradas.append(ip)
+        except socket.timeout:
+            continue
+        except OSError:
+            break
+    return encontradas
+
+
+# ---- Servidor TCP ----
 sock_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock_servidor.bind(("0.0.0.0", MI_PUERTO))
@@ -81,7 +138,7 @@ def enviar_archivo(sock, ruta_archivo, tamaño):
 def iniciar_envio(ruta_archivo):
     global enviando
     if not IP_OTRA_PC:
-        ventana.after(0, mostrar_mensaje, "Configura la IP de la otra PC primero.")
+        ventana.after(0, mostrar_mensaje, "No se encontro ninguna PC en la red.")
         return
     if enviando:
         ventana.after(0, mostrar_mensaje, "Ya hay un envio en curso.")
@@ -190,6 +247,49 @@ def ejecutar_envio():
         iniciar_envio(ruta)
 
 
+def aplicar_ip(ip):
+    global IP_OTRA_PC
+    if ip and ip != IP_OTRA_PC:
+        IP_OTRA_PC = ip
+        guardar_config(ip)
+        actualizar_estado()
+
+
+def actualizar_estado():
+    ip_mostrar = IP_OTRA_PC if IP_OTRA_PC else "SIN CONFIGURAR"
+    lbl_estado.config(
+        text=f"TCP :{MI_PUERTO}  ->  {ip_mostrar}:{PUERTO_OTRA_PC}  |  Descargas: {CARPETA_DESCARGAS}/"
+    )
+
+
+def buscar_automatico():
+    lbl_buscar.config(text="Buscando...")
+    btn_buscar.config(state=tk.DISABLED)
+
+    def _buscar():
+        encontradas = buscar_pc(timeout=3)
+        if encontradas:
+            ventana.after(0, lambda: aplicar_ip(encontradas[0]))
+            ventana.after(0, lambda: mostrar_mensaje(f"PC encontrada: {encontradas[0]}"))
+            ventana.after(0, lambda: lbl_buscar.config(text="Buscar PC"))
+        else:
+            ventana.after(0, lambda: lbl_buscar.config(text="No se encontro PC (reintenta)"))
+        ventana.after(0, lambda: btn_buscar.config(state=tk.NORMAL))
+
+    threading.Thread(target=_buscar, daemon=True).start()
+
+
+def abrir_config():
+    ip = simpledialog.askstring(
+        "Configurar IP",
+        "IP local de la OTRA PC (ej: 192.168.1.50):",
+        parent=ventana,
+        initialvalue=IP_OTRA_PC,
+    )
+    if ip and ip.strip():
+        aplicar_ip(ip.strip())
+
+
 def actualizar_progreso_envio(pct, bytes_actuales, bytes_totales):
     progreso_envio["value"] = pct
     lbl_progreso_envio.config(
@@ -209,37 +309,12 @@ def mostrar_mensaje(texto):
     lista_historial.see(tk.END)
 
 
-def abrir_config():
-    global IP_OTRA_PC
-    ip = simpledialog.askstring(
-        "Configurar IP",
-        "IP local de la OTRA PC (ej: 192.168.1.50):",
-        parent=ventana,
-        initialvalue=IP_OTRA_PC,
-    )
-    if ip and ip.strip():
-        ip = ip.strip()
-        guardar_config(ip)
-        IP_OTRA_PC = ip
-        lbl_estado.config(
-            text=f"TCP :{MI_PUERTO}  ->  {IP_OTRA_PC}:{PUERTO_OTRA_PC}  |  Descargas: {CARPETA_DESCARGAS}/"
-        )
-
-
+# ---- UI ----
 ventana = tk.Tk()
 ventana.title("Archivos compartidos")
 ventana.geometry("520x480")
 
 IP_OTRA_PC = cargar_config()
-if not IP_OTRA_PC:
-    ip = simpledialog.askstring(
-        "Configurar IP",
-        "IP local de la OTRA PC (ej: 192.168.1.50):",
-        parent=ventana,
-    )
-    if ip and ip.strip():
-        IP_OTRA_PC = ip.strip()
-        guardar_config(IP_OTRA_PC)
 
 frame_seleccion = tk.Frame(ventana)
 frame_seleccion.pack(fill="x", padx=8, pady=(8, 4))
@@ -284,8 +359,14 @@ lista_historial.pack(fill="both", expand=True)
 frame_barra = tk.Frame(ventana)
 frame_barra.pack(fill="x", padx=8, pady=(0, 2))
 
-btn_config = tk.Button(frame_barra, text="Configurar IP", command=abrir_config)
-btn_config.pack(side=tk.RIGHT)
+btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico)
+btn_buscar.pack(side=tk.LEFT, padx=(0, 4))
+
+btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config)
+btn_config.pack(side=tk.LEFT)
+
+lbl_buscar = tk.Label(frame_barra, text="", fg="gray")
+lbl_buscar.pack(side=tk.LEFT, padx=(8, 0))
 
 ip_mostrar = IP_OTRA_PC if IP_OTRA_PC else "SIN CONFIGURAR"
 lbl_estado = tk.Label(
@@ -295,8 +376,15 @@ lbl_estado = tk.Label(
 )
 lbl_estado.pack(pady=(0, 6))
 
+# ---- Arrancar hilos ----
 hilo_servidor = threading.Thread(target=aceptar_conexiones, daemon=True)
 hilo_servidor.start()
 
+hilo_discover = threading.Thread(target=escuchar_discovery, daemon=True)
+hilo_discover.start()
+
+ventana.after(500, buscar_automatico)
+
 ventana.mainloop()
 sock_servidor.close()
+sock_discover.close()
