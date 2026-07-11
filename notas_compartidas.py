@@ -358,7 +358,7 @@ def abrir_config():
 ventana = tk.Tk()
 ventana.title("Compartidor Local")
 ventana.geometry("620x600")
-ventana.minsize(560, 500)
+ventana.minsize(380, 480)
 
 # --- Cargar config guardada ---
 IP_OTRA_PC = cargar_config()
@@ -373,8 +373,10 @@ notebook.add(frame_texto, text="  Texto en vivo  ")
 caja = scrolledtext.ScrolledText(frame_texto, wrap=tk.WORD, font=("Consolas", 12))
 caja.pack(expand=True, fill="both", padx=8, pady=8)
 
+# El label de estado tiene un alto natural; el ScrolledText toma el resto con expand=True.
+# Esto es lo que hace que el area de texto sea lo unico responsivo al achicar la ventana.
 lbl_estado_texto = tk.Label(frame_texto, fg="gray", font=("Consolas", 10))
-lbl_estado_texto.pack(pady=(0, 8))
+lbl_estado_texto.pack(pady=(0, 8), anchor="w")
 
 
 def actualizar_caja(texto):
@@ -428,32 +430,39 @@ btn_enviar = tk.Button(
 )
 btn_enviar.pack(side=tk.RIGHT)
 
-frame_envio = tk.LabelFrame(frame_archivos, text="Envio", padx=6, pady=6)
+# Los LabelFrame NO usan pack_propagate(False): se encojen naturalmente.
+# Esto es importante porque si los forzamos a tener un alto minimo,
+# la suma de sus altos minimos tapa la barra inferior.
+# El UNICO elemento responsivo es la lista del historial (con scroll propio).
+
+frame_envio = tk.LabelFrame(frame_archivos, text="Envio", padx=6, pady=4)
 frame_envio.pack(fill="x", padx=8, pady=4)
 
 progreso_envio = ttk.Progressbar(frame_envio, length=400, mode="determinate")
-progreso_envio.pack(fill="x")
+progreso_envio.pack(fill="x", pady=(2, 0))
 
-lbl_progreso_envio = tk.Label(frame_envio, text="En espera...", anchor="w")
-lbl_progreso_envio.pack(fill="x")
+lbl_progreso_envio = tk.Label(frame_envio, text="En espera...", anchor="w", font=("Consolas", 9))
+lbl_progreso_envio.pack(fill="x", pady=(2, 0))
 
-frame_recepcion = tk.LabelFrame(frame_archivos, text="Recepcion", padx=6, pady=6)
+frame_recepcion = tk.LabelFrame(frame_archivos, text="Recepcion", padx=6, pady=4)
 frame_recepcion.pack(fill="x", padx=8, pady=4)
 
 progreso_recepcion = ttk.Progressbar(frame_recepcion, length=400, mode="determinate")
-progreso_recepcion.pack(fill="x")
+progreso_recepcion.pack(fill="x", pady=(2, 0))
 
-lbl_progreso_recepcion = tk.Label(frame_recepcion, text="En espera...", anchor="w")
-lbl_progreso_recepcion.pack(fill="x")
+lbl_progreso_recepcion = tk.Label(frame_recepcion, text="En espera...", anchor="w", font=("Consolas", 9))
+lbl_progreso_recepcion.pack(fill="x", pady=(2, 0))
 
-frame_historial = tk.LabelFrame(frame_archivos, text="Historial", padx=6, pady=6)
+# SOLO el historial se expande y es el unico responsivo al achicar la ventana.
+# El Listbox tiene scrollbar propio, asi que puede achicarse sin perder info.
+frame_historial = tk.LabelFrame(frame_archivos, text="Historial", padx=6, pady=4)
 frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
 
-lista_historial = tk.Listbox(frame_historial, height=6, font=("Consolas", 10))
+lista_historial = tk.Listbox(frame_historial, height=4, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
-lbl_estado_archivos = tk.Label(frame_archivos, fg="gray", font=("Consolas", 10))
-lbl_estado_archivos.pack(pady=(0, 8))
+lbl_estado_archivos = tk.Label(frame_archivos, fg="gray", font=("Consolas", 9))
+lbl_estado_archivos.pack(pady=(0, 4))
 
 
 def actualizar_progreso_envio(pct, bytes_actuales, bytes_totales):
@@ -475,21 +484,27 @@ def mostrar_mensaje(texto):
     lista_historial.see(tk.END)
 
 
-notebook.pack(expand=True, fill="both")
+ventana.grid_rowconfigure(0, weight=1)
+ventana.grid_columnconfigure(0, weight=1)
+notebook.grid(row=0, column=0, sticky="nsew", padx=4, pady=(4, 0))
 
-# ---- Barra inferior ----
-frame_barra = tk.Frame(ventana, height=36)
-frame_barra.pack(fill="x", padx=12, pady=(4, 10))
+# ---- Barra inferior fija con grid ----
+# El notebook ocupa la fila 0 y se contrae en altura.
+# La barra inferior fija en la fila 1 permanece visible siempre.
+ALTURA_BARRA = 50
+
+frame_barra = tk.Frame(ventana, bd=1, relief=tk.SUNKEN, bg="#ececec", height=ALTURA_BARRA)
+frame_barra.grid(row=1, column=0, sticky="ew", padx=4, pady=4)
 frame_barra.pack_propagate(False)
 
-btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico, padx=8)
-btn_buscar.pack(side=tk.LEFT, padx=(0, 6))
+btn_buscar = tk.Button(frame_barra, text="Buscar PC", command=buscar_automatico, padx=10)
+btn_buscar.pack(side=tk.LEFT, padx=(10, 6), pady=8)
 
-btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config, padx=8)
-btn_config.pack(side=tk.LEFT)
+btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config, padx=10)
+btn_config.pack(side=tk.LEFT, padx=2, pady=8)
 
-lbl_buscar = tk.Label(frame_barra, text="", fg="gray", font=("Consolas", 9))
-lbl_buscar.pack(side=tk.LEFT, padx=(12, 0))
+lbl_buscar = tk.Label(frame_barra, text="", fg="gray", font=("Consolas", 9), bg="#ececec")
+lbl_buscar.pack(side=tk.LEFT, padx=(12, 8), pady=8)
 
 actualizar_etiquetas_estado()
 
