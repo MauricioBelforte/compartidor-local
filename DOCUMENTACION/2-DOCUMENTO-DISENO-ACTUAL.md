@@ -1,9 +1,10 @@
 # Documento de Diseño — Actual
 
 ## Arquitectura General
-App unificada en `notas_compartidas.py` con 2 pestañas (ttk.Notebook). Arquitectura simétrica peer-to-peer: el mismo programa corre en las dos PCs. Cada instancia ejecuta simultáneamente:
+App unificada en `notas_compartidas.py` con 4 pestañas (ttk.Notebook). Arquitectura simétrica peer-to-peer: el mismo programa corre en las dos PCs. Cada instancia ejecuta simultáneamente:
 
 - **Módulo Texto** (UDP :50505): escucha y envía texto en vivo
+- **Módulo Mensajes Rápidos** (UDP :50508): envío/recepción de mensajes individuales + historial
 - **Módulo Archivos** (TCP :50506): servidor de recepción + cliente de envío
 
 ## Diagrama General
@@ -11,22 +12,31 @@ App unificada en `notas_compartidas.py` con 2 pestañas (ttk.Notebook). Arquitec
 flowchart LR
     subgraph PC_A["PC A - notas_compartidas.py"]
         T1["Pestaña Texto<br/>(ScrolledText)"]
+        M1["Pestaña Enviar/Recibir<br/>(input + recepción)"]
         A1["Pestaña Archivos<br/>(selección + progreso)"]
+        H1["Pestaña Historial<br/>(mensajes apilados)"]
     end
     subgraph PC_B["PC B - notas_compartidas.py"]
         T2["Pestaña Texto<br/>(ScrolledText)"]
+        M2["Pestaña Enviar/Recibir<br/>(input + recepción)"]
         A2["Pestaña Archivos<br/>(selección + progreso)"]
+        H2["Pestaña Historial<br/>(mensajes apilados)"]
     end
     T1 -- "UDP :50505<br/>texto completo" --> T2
     T2 -- "UDP :50505<br/>texto completo" --> T1
+    M1 -- "UDP :50508<br/>mensajes individuales" --> M2
+    M2 -- "UDP :50508<br/>mensajes individuales" --> M1
+    H1 -- "UDP :50508<br/>historial sincronizado" --> H2
+    H2 -- "UDP :50508<br/>historial sincronizado" --> H1
     A1 -- "TCP :50506<br/>metadatos + archivo" --> A2
     A2 -- "TCP :50506<br/>metadatos + archivo" --> A1
 ```
 
 ## Interfaz
-- `ttk.Notebook` con pestañas: "Texto en vivo" y "Archivos"
-- Ambos módulos de red arrancan en hilos daemon al iniciar la app
-- Sin conflictos: UDP 50505 para texto, TCP 50506 para archivos
+- `ttk.Notebook` con pestañas: "Texto en vivo", "Enviar y recibir texto", "Archivos", "Historial"
+- Indicador visual de conexión (círculo verde/gris) en barra inferior
+- Todos los módulos de red arrancan en hilos daemon al iniciar la app
+- Sin conflictos: UDP 50505 para texto en vivo, UDP 50508 para mensajes rápidos, TCP 50506 para archivos
 
 ---
 

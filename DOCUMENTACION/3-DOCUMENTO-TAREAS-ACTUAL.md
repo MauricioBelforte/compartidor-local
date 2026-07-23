@@ -36,6 +36,17 @@
 - [x] Implementar manejo de errores (conexión, I/O, socket)
 - [x] Verificar ejecución de aplicación
 
+### Componente 04 — Mejoras UI 4 Pestañas
+- [x] Crear documentación del componente (plan-inicial y plan-actual)
+- [x] Agregar constantes para nuevo puerto UDP 50508
+- [x] Crear socket UDP para mensajes rápidos
+- [x] Implementar indicador visual de conexión (círculo verde/gris)
+- [x] Crear pestaña "Enviar y recibir texto" con input, botón enviar, área recepción y botón copiar
+- [x] Crear pestaña "Historial" con mensajes apilados (más nuevo arriba)
+- [x] Implementar sincronización de mensajes rápidos entre PCs
+- [x] Remover mensajes de "[PC encontrada: IP]" del área de texto en vivo
+- [x] Verificar que la aplicación inicie sin errores
+
 ## Tareas Pendientes
 ### Componente 01 — Notas Compartidas
 - [ ] Probar en 2 PCs reales dentro de LAN

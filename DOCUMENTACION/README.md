@@ -15,5 +15,6 @@ Este proyecto usa un sistema de documentación estructurado para rastrear el est
 | 01 | Notas compartidas LAN | Implementado |
 | 02 | Compartir archivos LAN | Implementado |
 | 03 | Multi-PC Soporte | En planificación |
+| 04 | Mejoras UI 4 Pestañas | En implementación |
 
-## Próximo número: 04
+## Próximo número: 05

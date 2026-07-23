@@ -20,6 +20,8 @@ MI_PUERTO_TEXTO = 50505
 PUERTO_TEXTO_OTRA = 50505
 MI_PUERTO_ARCHIVOS = 50506
 PUERTO_ARCHIVOS_OTRA = 50506
+MI_PUERTO_MENSAJES = 50508
+PUERTO_MENSAJES_OTRA = 50508
 CARPETA_DESCARGAS = "descargas"
 CHUNK_SIZE = 4096
 # -----------------------------------
@@ -113,6 +115,15 @@ def buscar_pc(timeout=2):
 sock_texto = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_texto.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock_texto.bind(("0.0.0.0", MI_PUERTO_TEXTO))
+
+
+# ============================================================
+# MODULO MENSAJES RAPIDOS
+# ============================================================
+
+sock_mensajes = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock_mensajes.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock_mensajes.bind(("0.0.0.0", MI_PUERTO_MENSAJES))
 
 
 # ============================================================
@@ -285,6 +296,7 @@ def aplicar_ip(ip):
         IP_OTRA_PC = ip
         guardar_config(ip)
         actualizar_etiquetas_estado()
+        actualizar_indicador()
 
 
 def autodescubrir_continuo():
@@ -297,9 +309,6 @@ def autodescubrir_continuo():
             if encontradas:
                 ventana.after(0, lambda: aplicar_ip(encontradas[0]))
                 ventana.after(0, lambda: lbl_buscar.config(text=""))
-                ventana.after(0, lambda: caja.insert(
-                    tk.END, f"\n[PC encontrada: {encontradas[0]}]\n"
-                ))
                 return
             ventana.after(0, lambda: lbl_buscar.config(
                 text="Buscando PCs en la red..."
@@ -349,6 +358,64 @@ def buscar_automatico():
 
 def abrir_config():
     pedir_ip()
+
+
+# ============================================================
+# MODULO MENSAJES RAPIDOS - FUNCIONES
+# ============================================================
+
+def enviar_mensaje_rapido():
+    if not IP_OTRA_PC:
+        mostrar_mensaje("No hay conexión")
+        return
+    contenido = input_mensaje.get("1.0", "end-1c")
+    if not contenido.strip():
+        return
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    mensaje = f"{timestamp}|||{contenido}"
+    try:
+        sock_mensajes.sendto(mensaje.encode("utf-8"), (IP_OTRA_PC, PUERTO_MENSAJES_OTRA))
+        input_mensaje.delete("1.0", tk.END)
+        agregar_historial(timestamp, contenido, "enviado")
+    except OSError as e:
+        print("Error al enviar:", e)
+
+
+def escuchar_mensajes():
+    while True:
+        try:
+            datos, _ = sock_mensajes.recvfrom(65535)
+        except OSError:
+            break
+        mensaje = datos.decode("utf-8", errors="replace")
+        partes = mensaje.split("|||", 1)
+        if len(partes) == 2:
+            timestamp, contenido = partes
+            ventana.after(0, mostrar_recepcion, contenido)
+            ventana.after(0, agregar_historial, timestamp, contenido, "recibido")
+
+
+def mostrar_recepcion(contenido):
+    area_recepcion.delete("1.0", tk.END)
+    area_recepcion.insert(tk.END, contenido)
+
+
+def copiar_recepcion():
+    contenido = area_recepcion.get("1.0", "end-1c")
+    ventana.clipboard_clear()
+    ventana.clipboard_append(contenido)
+    area_recepcion.delete("1.0", tk.END)
+
+
+def agregar_historial(timestamp, contenido, tipo):
+    etiqueta = ">>>" if tipo == "enviado" else "<<<"
+    linea = f"[{timestamp}] {etiqueta} {contenido}\n"
+    caja_historial.insert("1.0", linea)
+
+
+def actualizar_indicador():
+    color = "#4CAF50" if IP_OTRA_PC else "#CCCCCC"
+    canvas_indicador.itemconfig(circulo_conexion, fill=color)
 
 
 # ============================================================
@@ -409,7 +476,32 @@ caja.bind("<KeyRelease>", enviar_texto)
 hilo_texto = threading.Thread(target=escuchar_texto, daemon=True)
 hilo_texto.start()
 
-# ---------- PESTAÑA 2: ARCHIVOS ----------
+# ---------- PESTAÑA 2: ENVIAR Y RECIBIR TEXTO ----------
+
+frame_mensajes = ttk.Frame(notebook)
+notebook.add(frame_mensajes, text="  Enviar y recibir texto  ")
+
+# Frame input
+frame_input = tk.Frame(frame_mensajes)
+frame_input.pack(fill="both", expand=True, padx=8, pady=8)
+
+input_mensaje = scrolledtext.ScrolledText(frame_input, height=5, wrap=tk.WORD, font=("Consolas", 11))
+input_mensaje.pack(fill="both", expand=True)
+
+btn_enviar_mensaje = tk.Button(frame_input, text="Enviar", command=enviar_mensaje_rapido)
+btn_enviar_mensaje.pack(pady=4)
+
+# Frame recepción
+frame_recepcion = tk.Frame(frame_mensajes)
+frame_recepcion.pack(fill="both", expand=True, padx=8, pady=8)
+
+area_recepcion = scrolledtext.ScrolledText(frame_recepcion, height=5, wrap=tk.WORD, font=("Consolas", 11))
+area_recepcion.pack(fill="both", expand=True)
+
+btn_copiar = tk.Button(frame_recepcion, text="Copiar", command=copiar_recepcion)
+btn_copiar.pack(pady=4)
+
+# ---------- PESTAÑA 3: ARCHIVOS ----------
 
 frame_archivos = ttk.Frame(notebook)
 notebook.add(frame_archivos, text="  Archivos  ")
@@ -455,14 +547,22 @@ lbl_progreso_recepcion.pack(fill="x", pady=(2, 0))
 
 # SOLO el historial se expande y es el unico responsivo al achicar la ventana.
 # El Listbox tiene scrollbar propio, asi que puede achicarse sin perder info.
-frame_historial = tk.LabelFrame(frame_archivos, text="Historial", padx=6, pady=4)
-frame_historial.pack(fill="both", expand=True, padx=8, pady=4)
+frame_historial_archivos = tk.LabelFrame(frame_archivos, text="Historial", padx=6, pady=4)
+frame_historial_archivos.pack(fill="both", expand=True, padx=8, pady=4)
 
-lista_historial = tk.Listbox(frame_historial, height=4, font=("Consolas", 10))
+lista_historial = tk.Listbox(frame_historial_archivos, height=4, font=("Consolas", 10))
 lista_historial.pack(fill="both", expand=True)
 
 lbl_estado_archivos = tk.Label(frame_archivos, fg="gray", font=("Consolas", 9))
 lbl_estado_archivos.pack(pady=(0, 4))
+
+# ---------- PESTAÑA 4: HISTORIAL ----------
+
+frame_historial = ttk.Frame(notebook)
+notebook.add(frame_historial, text="  Historial  ")
+
+caja_historial = scrolledtext.ScrolledText(frame_historial, wrap=tk.WORD, font=("Consolas", 11))
+caja_historial.pack(expand=True, fill="both", padx=8, pady=8)
 
 
 def actualizar_progreso_envio(pct, bytes_actuales, bytes_totales):
@@ -503,10 +603,15 @@ btn_buscar.pack(side=tk.LEFT, padx=(10, 6), pady=8)
 btn_config = tk.Button(frame_barra, text="IP manual", command=abrir_config, padx=10)
 btn_config.pack(side=tk.LEFT, padx=2, pady=8)
 
+canvas_indicador = tk.Canvas(frame_barra, width=20, height=20, bg="#ececec", highlightthickness=0)
+canvas_indicador.pack(side=tk.LEFT, padx=(12, 4), pady=8)
+circulo_conexion = canvas_indicador.create_oval(2, 2, 18, 18, fill="#CCCCCC", outline="")
+
 lbl_buscar = tk.Label(frame_barra, text="", fg="gray", font=("Consolas", 9), bg="#ececec")
-lbl_buscar.pack(side=tk.LEFT, padx=(12, 8), pady=8)
+lbl_buscar.pack(side=tk.LEFT, padx=(4, 8), pady=8)
 
 actualizar_etiquetas_estado()
+actualizar_indicador()
 
 # ---- Arrancar hilos ----
 hilo_servidor = threading.Thread(target=aceptar_conexiones, daemon=True)
@@ -515,11 +620,15 @@ hilo_servidor.start()
 hilo_discover = threading.Thread(target=escuchar_discovery, daemon=True)
 hilo_discover.start()
 
+hilo_mensajes = threading.Thread(target=escuchar_mensajes, daemon=True)
+hilo_mensajes.start()
+
 # ---- Autodescubrimiento continuo al inicio ----
 ventana.after(500, autodescubrir_continuo)
 
 ventana.mainloop()
 
 sock_texto.close()
+sock_mensajes.close()
 sock_servidor.close()
 sock_discover.close()
