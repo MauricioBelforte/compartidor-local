@@ -6,9 +6,11 @@ Comunicación instantánea entre 2 PCs de la misma red local (LAN) sin depender 
 ## Requisitos Funcionales
 - Sincronización de texto en tiempo casi real entre 2 PCs
 - Transferencia de archivos de cualquier tipo vía TCP
-- App unificada con 4 pestañas (texto en vivo, enviar y recibir texto, archivos, historial)
+- App unificada con 5 pestañas (texto en vivo, enviar y recibir texto, archivos, historial, clipboard)
 - Envío rápido de mensajes con input que se limpia automáticamente
 - Historial sincronizado de mensajes enviados/recibidos
+- Monitoreo automático del clipboard del sistema
+- Historial de copias del clipboard sincronizado entre PCs
 - Indicador visual de conexión (círculo verde cuando conectado)
 - Comunicación exclusivamente dentro de la red local (LAN)
 - Interfaz de escritorio nativa (ventana propia)

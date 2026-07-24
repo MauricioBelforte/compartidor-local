@@ -47,6 +47,19 @@
 - [x] Remover mensajes de "[PC encontrada: IP]" del área de texto en vivo
 - [x] Verificar que la aplicación inicie sin errores
 
+### Componente 05 — Historial de Clipboard
+- [x] Crear documentación del componente (plan-inicial y plan-actual)
+- [x] Agregar constantes para nuevo puerto UDP 50509
+- [x] Crear socket UDP para clipboard
+- [x] Implementar función monitorear_clipboard()
+- [x] Implementar función escuchar_clipboard()
+- [x] Implementar función enviar_clipboard_remoto()
+- [x] Implementar función agregar_clipboard_historial()
+- [x] Crear pestaña "Clipboard" con layout
+- [x] Iniciar hilos de monitoreo y escucha
+- [x] Cerrar socket de clipboard al final
+- [x] Verificar que la aplicación inicie sin errores
+
 ## Tareas Pendientes
 ### Componente 01 — Notas Compartidas
 - [ ] Probar en 2 PCs reales dentro de LAN

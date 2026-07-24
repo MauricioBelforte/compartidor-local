@@ -9,6 +9,7 @@ import os
 import socket
 import struct
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, scrolledtext, simpledialog, ttk
 from datetime import datetime
@@ -22,11 +23,16 @@ MI_PUERTO_ARCHIVOS = 50506
 PUERTO_ARCHIVOS_OTRA = 50506
 MI_PUERTO_MENSAJES = 50508
 PUERTO_MENSAJES_OTRA = 50508
+MI_PUERTO_CLIPBOARD = 50509
+PUERTO_CLIPBOARD_OTRA = 50509
 CARPETA_DESCARGAS = "descargas"
 CHUNK_SIZE = 4096
+CLIPBOARD_POLLING_INTERVAL = 500
 # -----------------------------------
 
 IP_OTRA_PC = ""
+clipboard_anterior = ""
+clipboard_habilitado = True
 
 
 def ruta_config():
@@ -124,6 +130,15 @@ sock_texto.bind(("0.0.0.0", MI_PUERTO_TEXTO))
 sock_mensajes = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock_mensajes.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock_mensajes.bind(("0.0.0.0", MI_PUERTO_MENSAJES))
+
+
+# ============================================================
+# MODULO CLIPBOARD
+# ============================================================
+
+sock_clipboard = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock_clipboard.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock_clipboard.bind(("0.0.0.0", MI_PUERTO_CLIPBOARD))
 
 
 # ============================================================
@@ -419,6 +434,54 @@ def actualizar_indicador():
 
 
 # ============================================================
+# MODULO CLIPBOARD - FUNCIONES
+# ============================================================
+
+def monitorear_clipboard():
+    global clipboard_anterior
+    while clipboard_habilitado:
+        try:
+            contenido_actual = ventana.clipboard_get()
+            if contenido_actual and contenido_actual != clipboard_anterior:
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                agregar_clipboard_historial(timestamp, contenido_actual, "local")
+                enviar_clipboard_remoto(timestamp, contenido_actual)
+                clipboard_anterior = contenido_actual
+        except tk.TclError:
+            pass
+        time.sleep(CLIPBOARD_POLLING_INTERVAL / 1000)
+
+
+def escuchar_clipboard():
+    while True:
+        try:
+            datos, _ = sock_clipboard.recvfrom(65535)
+        except OSError:
+            break
+        mensaje = datos.decode("utf-8", errors="replace")
+        partes = mensaje.split("|||", 1)
+        if len(partes) == 2:
+            timestamp, contenido = partes
+            ventana.after(0, agregar_clipboard_historial, timestamp, contenido, "remoto")
+
+
+def enviar_clipboard_remoto(timestamp, contenido):
+    if not IP_OTRA_PC:
+        return
+    mensaje = f"{timestamp}|||{contenido}"
+    try:
+        sock_clipboard.sendto(mensaje.encode("utf-8"), (IP_OTRA_PC, PUERTO_CLIPBOARD_OTRA))
+    except OSError as e:
+        print("Error al enviar clipboard:", e)
+
+
+def agregar_clipboard_historial(timestamp, contenido, origen):
+    etiqueta = "[LOCAL]" if origen == "local" else "[REMOTO]"
+    linea = f"[{timestamp}] {etiqueta} {contenido}\n"
+    caja_clipboard.insert("1.0", linea)
+
+
+# ============================================================
 # INTERFAZ GRAFICA
 # ============================================================
 
@@ -564,6 +627,14 @@ notebook.add(frame_historial, text="  Historial  ")
 caja_historial = scrolledtext.ScrolledText(frame_historial, wrap=tk.WORD, font=("Consolas", 11))
 caja_historial.pack(expand=True, fill="both", padx=8, pady=8)
 
+# ---------- PESTAÑA 5: CLIPBOARD ----------
+
+frame_clipboard = ttk.Frame(notebook)
+notebook.add(frame_clipboard, text="  Clipboard  ")
+
+caja_clipboard = scrolledtext.ScrolledText(frame_clipboard, wrap=tk.WORD, font=("Consolas", 11))
+caja_clipboard.pack(expand=True, fill="both", padx=8, pady=8)
+
 
 def actualizar_progreso_envio(pct, bytes_actuales, bytes_totales):
     progreso_envio["value"] = pct
@@ -623,6 +694,12 @@ hilo_discover.start()
 hilo_mensajes = threading.Thread(target=escuchar_mensajes, daemon=True)
 hilo_mensajes.start()
 
+hilo_clipboard_monitor = threading.Thread(target=monitorear_clipboard, daemon=True)
+hilo_clipboard_monitor.start()
+
+hilo_clipboard_escucha = threading.Thread(target=escuchar_clipboard, daemon=True)
+hilo_clipboard_escucha.start()
+
 # ---- Autodescubrimiento continuo al inicio ----
 ventana.after(500, autodescubrir_continuo)
 
@@ -630,5 +707,6 @@ ventana.mainloop()
 
 sock_texto.close()
 sock_mensajes.close()
+sock_clipboard.close()
 sock_servidor.close()
 sock_discover.close()
